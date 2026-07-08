@@ -141,6 +141,99 @@
                             </packagingScripts>
                         </configuration>
                     </execution>
+                    <!-- Provision session clustering servers for distributable web tests -->
+                    <execution>
+                        <id>provision-session-server-1</id>
+                        <phase>process-test-classes</phase>
+                        <goals>
+                            <goal>package</goal>
+                        </goals>
+                        <configuration>
+                            <skipDeployment>true</skipDeployment>
+                            <provisioning-dir>${project.build.directory}/wildfly-session-1</provisioning-dir>
+                            <stability>community</stability>
+                            <feature-packs>
+                                <feature-pack>
+                                    <groupId>org.wildfly</groupId>
+                                    <artifactId>wildfly-galleon-pack</artifactId>
+                                    <version>${version.org.wildfly}</version>
+                                </feature-pack>
+                                <feature-pack>
+                                    <groupId>${project.groupId}</groupId>
+                                    <artifactId>redis-client-feature-pack</artifactId>
+                                    <version>${project.version}</version>
+                                </feature-pack>
+                            </feature-packs>
+                            <layers>
+                                <layer>jaxrs-server</layer>
+                                <layer>redis-client</layer>
+                                <layer>redis-store</layer>
+                            </layers>
+                            <galleon-options>
+                                <jboss-fork-embedded>true</jboss-fork-embedded>
+                            </galleon-options>
+                            <packagingScripts>
+                                <packaging-script>
+                                    <commands>
+                                        <command>/system-property=jboss.node.name:add(value=session-node-1)</command>
+                                        <command>/subsystem=undertow:write-attribute(name=instance-id,value="session-node-1")</command>
+                                        <command>/subsystem=transactions:write-attribute(name=node-identifier,value="session-node-1")</command>
+                                        <command>/socket-binding-group=standard-sockets:write-attribute(name=port-offset,value="$\{jboss.socket.binding.port-offset:400\}")</command>
+                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${redis.cluster.nodes:127.0.0.1:6379})</command>
+                                        <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist:write-attribute(name=modules,value=[org.wildfly.redis.store])</command>
+                                        <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist/store=file:remove()</command>
+                                        <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                    </commands>
+                                </packaging-script>
+                            </packagingScripts>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>provision-session-server-2</id>
+                        <phase>process-test-classes</phase>
+                        <goals>
+                            <goal>package</goal>
+                        </goals>
+                        <configuration>
+                            <skipDeployment>true</skipDeployment>
+                            <provisioning-dir>${project.build.directory}/wildfly-session-2</provisioning-dir>
+                            <stability>community</stability>
+                            <feature-packs>
+                                <feature-pack>
+                                    <groupId>org.wildfly</groupId>
+                                    <artifactId>wildfly-galleon-pack</artifactId>
+                                    <version>${version.org.wildfly}</version>
+                                </feature-pack>
+                                <feature-pack>
+                                    <groupId>${project.groupId}</groupId>
+                                    <artifactId>redis-client-feature-pack</artifactId>
+                                    <version>${project.version}</version>
+                                </feature-pack>
+                            </feature-packs>
+                            <layers>
+                                <layer>jaxrs-server</layer>
+                                <layer>redis-client</layer>
+                                <layer>redis-store</layer>
+                            </layers>
+                            <galleon-options>
+                                <jboss-fork-embedded>true</jboss-fork-embedded>
+                            </galleon-options>
+                            <packagingScripts>
+                                <packaging-script>
+                                    <commands>
+                                        <command>/system-property=jboss.node.name:add(value=session-node-2)</command>
+                                        <command>/subsystem=undertow:write-attribute(name=instance-id,value="session-node-2")</command>
+                                        <command>/subsystem=transactions:write-attribute(name=node-identifier,value="session-node-2")</command>
+                                        <command>/socket-binding-group=standard-sockets:write-attribute(name=port-offset,value="$\{jboss.socket.binding.port-offset:500\}")</command>
+                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${redis.cluster.nodes:127.0.0.1:6379})</command>
+                                        <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist:write-attribute(name=modules,value=[org.wildfly.redis.store])</command>
+                                        <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist/store=file:remove()</command>
+                                        <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                    </commands>
+                                </packaging-script>
+                            </packagingScripts>
+                        </configuration>
+                    </execution>
                     <!-- Provision a second server with redis-store layer for custom store tests -->
                     <execution>
                         <id>provision-store-server</id>
@@ -203,6 +296,8 @@
                             <systemPropertyVariables>
                                 <jboss.home>${jboss.home}</jboss.home>
                                 <jboss.home.store>${project.build.directory}/wildfly-store</jboss.home.store>
+                                <jboss.home.session1>${project.build.directory}/wildfly-session-1</jboss.home.session1>
+                                <jboss.home.session2>${project.build.directory}/wildfly-session-2</jboss.home.session2>
                             </systemPropertyVariables>
                         </configuration>
                     </execution>

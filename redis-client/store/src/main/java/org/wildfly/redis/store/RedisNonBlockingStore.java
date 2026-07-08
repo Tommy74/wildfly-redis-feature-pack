@@ -94,6 +94,7 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
             if (clientConfig != null) {
                 this.jedis = clientConfig.createUnifiedJedis();
                 LOG.info("Redis store started using connection '" + connectionName + "'");
+                validateConnection();
                 return;
             }
             LOG.warning("Redis connection '" + connectionName + "' not found in registry, falling back to properties");
@@ -110,6 +111,17 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
         }
         this.jedis = fallbackConfig.createUnifiedJedis();
         LOG.info("Redis store started using direct connection to " + clusterNodes);
+        validateConnection();
+    }
+
+    private void validateConnection() {
+        try {
+            String pong = jedis.ping();
+            LOG.info("Redis connection validated: " + pong);
+        } catch (Exception e) {
+            LOG.log(Level.SEVERE, "Redis connection validation failed", e);
+            throw new PersistenceException("Redis connection validation failed", e);
+        }
     }
 
     @Override

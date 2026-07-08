@@ -58,7 +58,62 @@ curl http://localhost:8080/redis-example/api/redis/get/hello
 # world
 ```
 
-The provisioned server also includes an Infinispan cache (`mycontainer/mycache`) backed by the Redis custom store (Part 2). Any WildFly subsystem or application that uses this cache will have its entries automatically persisted to Redis with the key pattern `wf:ispn:mycache:*`.
+The provisioned server also includes an Infinispan cache backed by the Redis custom store (Part 2). Any WildFly subsystem or application that uses this cache will have its entries automatically persisted to Redis.
+
+### Testing Clustered Sessions with Redis
+
+The example application is a distributable web application. When two WildFly nodes share the same Redis instance, session data created on one node is available on the other.
+
+**1. Start Redis**
+
+```bash
+podman run --rm -it --name redis -p 6379:6379 redis:7-alpine
+```
+
+**2. Build the feature pack and the example application **
+
+```bash
+mvn clean install -DskipTests -Denforcer.skip
+
+pushd redis-client-example
+mvn clean install -DskipTests -Denforcer.skip
+popd
+```
+
+**3. Start WildFly node 1** (port 8180)
+
+```bash
+./redis-client-example/target/server-complete-1/bin/standalone.sh
+```
+
+**4. Start WildFly node 2** (port 8280)
+
+```bash
+./redis-client-example/target/server-complete-2/bin/standalone.sh
+```
+
+**5. Store session data on node 1**
+
+```bash
+curl -b cookie.txt -c cookie.txt -X PUT http://localhost:8180/redis-example/api/session/color/BLUE
+# {"key":"color","sessionId":"v9_sjPcJH2kZNpVDmPdu6OmvgNdEfjh69tbQaPTE","value":"BLUE"}
+```
+
+**6. Verify session data is in Redis**
+
+```bash
+podman exec redis redis-cli keys 'wf:ispn:*'
+# wf:ispn:redis-example.war:...
+```
+
+**7. Read the same session data from node 2**
+
+```bash
+curl -b cookie.txt -c cookie.txt http://localhost:8280/redis-example/api/session/color
+# {"sessionId":"...","value":"BLUE","key":"color"}
+```
+
+The session data is persisted to Redis via the custom Infinispan store, making it available across all cluster nodes.
 
 ---
 
