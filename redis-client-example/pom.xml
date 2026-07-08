@@ -116,6 +116,9 @@
                             <packagingScripts combine.children="append">
                                 <packaging-script>
                                     <commands>
+                                        <!-- Node specific Identity -->
+                                        <command>/system-property=jboss.node.name:add(value=node-8180)</command>
+                                        <command>/subsystem=undertow:write-attribute(name=instance-id,value="node-8180")</command>
                                         <command>/subsystem=transactions:write-attribute(name=node-identifier,value="$\{jboss.tx.node.id:100\}")</command>
                                         <command>/socket-binding-group=standard-sockets:write-attribute(name=port-offset,value="$\{jboss.socket.binding.port-offset:100\}")</command>
                                         <!-- Part 1: Redis connection for CDI injection -->
@@ -140,6 +143,9 @@
                             <packagingScripts combine.children="append">
                                 <packaging-script>
                                     <commands>
+                                        <!-- Node specific Identity -->
+                                        <command>/system-property=jboss.node.name:add(value=node-8280)</command>
+                                        <command>/subsystem=undertow:write-attribute(name=instance-id,value="node-8280")</command>
                                         <command>/subsystem=transactions:write-attribute(name=node-identifier,value="$\{jboss.tx.node.id:200\}")</command>
                                         <command>/socket-binding-group=standard-sockets:write-attribute(name=port-offset,value="$\{jboss.socket.binding.port-offset:200\}")</command>
                                         <!-- Part 1: Redis connection for CDI injection -->
