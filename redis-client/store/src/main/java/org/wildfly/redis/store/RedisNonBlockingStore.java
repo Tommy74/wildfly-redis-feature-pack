@@ -4,14 +4,18 @@
  */
 package org.wildfly.redis.store;
 
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -27,6 +31,8 @@ import org.infinispan.persistence.spi.MarshallableEntryFactory;
 import org.infinispan.persistence.spi.NonBlockingStore;
 import org.infinispan.persistence.spi.PersistenceException;
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 
 import org.wildfly.extension.redis.injection.RedisClientConfig;
 import org.wildfly.extension.redis.injection.RedisConnectionRegistry;
@@ -221,30 +227,86 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
 
     @Override
     public Publisher<MarshallableEntry<K, V>> publishEntries(IntSet segments, Predicate<? super K> filter, boolean includeValues) {
-        return subscriber -> {
-            nonBlockingExecutor.execute(() -> {
-                try {
-                    ScanParams params = new ScanParams().match(keyPrefix + "*").count(100);
-                    String cursor = ScanParams.SCAN_POINTER_START;
-                    do {
-                        ScanResult<String> result = jedis.scan(cursor, params);
-                        for (String key : result.getResult()) {
-                            byte[] data = jedis.get(key.getBytes());
-                            if (data != null) {
-                                MarshallableEntry<K, V> entry = bytesToEntry(data);
-                                if (entry != null && (filter == null || filter.test(entry.getKey()))) {
-                                    subscriber.onNext(entry);
-                                }
-                            }
-                        }
-                        cursor = result.getCursor();
-                    } while (!cursor.equals(ScanParams.SCAN_POINTER_START));
-                    subscriber.onComplete();
-                } catch (Exception e) {
-                    subscriber.onError(new PersistenceException("Failed to publish entries from Redis", e));
+        return subscriber -> nonBlockingExecutor.execute(() -> {
+            List<MarshallableEntry<K, V>> entries;
+            try {
+                entries = scanAllEntries(filter);
+            } catch (Exception e) {
+                subscriber.onSubscribe(EMPTY_SUBSCRIPTION);
+                subscriber.onError(new PersistenceException("Failed to scan entries from Redis", e));
+                return;
+            }
+            subscriber.onSubscribe(new ListSubscription<>(entries, subscriber));
+        });
+    }
+
+    private List<MarshallableEntry<K, V>> scanAllEntries(Predicate<? super K> filter) {
+        List<MarshallableEntry<K, V>> entries = new ArrayList<>();
+        ScanParams params = new ScanParams().match(keyPrefix + "*").count(100);
+        String cursor = ScanParams.SCAN_POINTER_START;
+        do {
+            ScanResult<String> result = jedis.scan(cursor, params);
+            for (String key : result.getResult()) {
+                byte[] data = jedis.get(key.getBytes());
+                if (data != null) {
+                    MarshallableEntry<K, V> entry = bytesToEntry(data);
+                    if (entry != null && (filter == null || filter.test(entry.getKey()))) {
+                        entries.add(entry);
+                    }
                 }
-            });
-        };
+            }
+            cursor = result.getCursor();
+        } while (!cursor.equals(ScanParams.SCAN_POINTER_START));
+        return entries;
+    }
+
+    private static final Subscription EMPTY_SUBSCRIPTION = new Subscription() {
+        @Override public void request(long n) {}
+        @Override public void cancel() {}
+    };
+
+    private static final class ListSubscription<T> implements Subscription {
+        private final List<T> items;
+        private final Subscriber<? super T> subscriber;
+        private final AtomicLong demand = new AtomicLong();
+        private final AtomicInteger wip = new AtomicInteger();
+        private int index;
+        private volatile boolean cancelled;
+
+        ListSubscription(List<T> items, Subscriber<? super T> subscriber) {
+            this.items = items;
+            this.subscriber = subscriber;
+        }
+
+        @Override
+        public void request(long n) {
+            if (n <= 0 || cancelled) return;
+            demand.getAndAdd(n);
+            drain();
+        }
+
+        @Override
+        public void cancel() {
+            cancelled = true;
+        }
+
+        private void drain() {
+            if (wip.getAndIncrement() != 0) return;
+            do {
+                long d = demand.get();
+                long emitted = 0;
+                while (emitted < d && index < items.size() && !cancelled) {
+                    subscriber.onNext(items.get(index++));
+                    emitted++;
+                }
+                if (index >= items.size() && !cancelled) {
+                    subscriber.onComplete();
+                    return;
+                }
+                if (cancelled) return;
+                demand.addAndGet(-emitted);
+            } while (wip.decrementAndGet() != 0);
+        }
     }
 
     private String toRedisKey(Object key) {
