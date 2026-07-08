@@ -1,0 +1,117 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.wildfly.redis</groupId>
+        <artifactId>wildfly-redis-feature-pack-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>redis-client-example</artifactId>
+    <packaging>war</packaging>
+    <name>Redis Client Example Application</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>jakarta.ws.rs</groupId>
+            <artifactId>jakarta.ws.rs-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.enterprise</groupId>
+            <artifactId>jakarta.enterprise.cdi-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.inject</groupId>
+            <artifactId>jakarta.inject-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>redis-client-injection</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>redis-example</finalName>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.wildfly.plugins</groupId>
+                    <artifactId>wildfly-maven-plugin</artifactId>
+                    <configuration>
+                        <feature-packs>
+                            <feature-pack>
+                                <groupId>org.wildfly</groupId>
+                                <artifactId>wildfly-galleon-pack</artifactId>
+                                <version>${version.org.wildfly}</version>
+                            </feature-pack>
+                            <feature-pack>
+                                <groupId>${project.groupId}</groupId>
+                                <artifactId>redis-client-feature-pack</artifactId>
+                                <version>${project.version}</version>
+                            </feature-pack>
+                        </feature-packs>
+                        <layers>
+                            <layer>jaxrs-server</layer>
+                            <layer>redis-client</layer>
+                            <layer>redis-store</layer>
+                        </layers>
+                        <galleon-options>
+                            <jboss-fork-embedded>true</jboss-fork-embedded>
+                        </galleon-options>
+                        <packagingScripts>
+                            <packaging-script>
+                                <commands>
+                                    <!-- Part 1: Redis connection for CDI injection -->
+                                    <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=127.0.0.1:6379)</command>
+                                    <!-- Part 2: Infinispan cache with Redis custom store -->
+                                    <command>/subsystem=infinispan/cache-container=mycontainer:add()</command>
+                                    <command>/subsystem=infinispan/cache-container=mycontainer/local-cache=mycache:add(modules=[org.wildfly.redis.store])</command>
+                                    <command>/subsystem=infinispan/cache-container=mycontainer/local-cache=mycache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                </commands>
+                            </packaging-script>
+                        </packagingScripts>
+                        <stability>community</stability>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.wildfly.plugins</groupId>
+                <artifactId>wildfly-maven-plugin</artifactId>
+                <executions>
+                    <!-- Dev server for "mvn wildfly:dev" (no app pre-deployed) -->
+                    <execution>
+                        <id>provision-dev-server</id>
+                        <goals>
+                            <goal>package</goal>
+                        </goals>
+                        <configuration combine.children="merge">
+                            <skipDeployment>true</skipDeployment>
+                        </configuration>
+                    </execution>
+                    <!-- Complete server with app pre-deployed -->
+                    <execution>
+                        <id>provision-complete-server</id>
+                        <goals>
+                            <goal>package</goal>
+                        </goals>
+                        <configuration combine.children="merge">
+                            <provisioning-dir>${project.build.directory}/server-complete</provisioning-dir>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -36,7 +36,6 @@
         <version.org.wildfly.plugin>6.0.0.Final</version.org.wildfly.plugin>
 
         <version.redis.clients.jedis>5.2.0</version.redis.clients.jedis>
-        <version.org.infinispan>15.0.19.Final</version.org.infinispan>
 
         <!-- Test dependencies -->
         <version.junit>5.11.4</version.junit>
@@ -77,18 +76,6 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-pool2</artifactId>
                 <version>2.12.0</version>
-            </dependency>
-
-            <!-- Infinispan (for custom store module) -->
-            <dependency>
-                <groupId>org.infinispan</groupId>
-                <artifactId>infinispan-core</artifactId>
-                <version>${version.org.infinispan}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.infinispan</groupId>
-                <artifactId>infinispan-commons</artifactId>
-                <version>${version.org.infinispan}</version>
             </dependency>
 
             <!-- Feature pack (zip) -->
@@ -194,5 +181,6 @@
         <module>redis-client</module>
         <module>redis-client-feature-pack</module>
         <module>redis-client-testsuite</module>
+        <module>redis-client-example</module>
     </modules>
 </project>

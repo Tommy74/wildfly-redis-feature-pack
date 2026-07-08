@@ -25,6 +25,41 @@ export TESTCONTAINERS_RYUK_DISABLED=true
 mvn clean install -Denforcer.skip
 ```
 
+### Sample Application
+
+The quickest way to try the feature pack is the included `redis-client-example` application. It demonstrates both Redis CDI injection (Part 1) and the custom Infinispan cache store backed by Redis (Part 2).
+
+**1. Start Redis**
+
+```bash
+podman run --rm -it --name redis -p 6379:6379 redis:7-alpine
+```
+
+**2. Build the feature pack**
+
+```bash
+mvn clean install -DskipTests -Denforcer.skip
+```
+
+**3. Run the example application**
+
+```bash
+cd redis-client-example
+mvn wildfly:dev -Denforcer.skip
+```
+
+**4. Test direct Redis operations** (Part 1 — CDI injection of `UnifiedJedis`)
+
+```bash
+curl http://localhost:8080/redis-example/api/redis/set/hello/world
+# OK
+
+curl http://localhost:8080/redis-example/api/redis/get/hello
+# world
+```
+
+The provisioned server also includes an Infinispan cache (`mycontainer/mycache`) backed by the Redis custom store (Part 2). Any WildFly subsystem or application that uses this cache will have its entries automatically persisted to Redis with the key pattern `wf:ispn:mycache:*`.
+
 ---
 
 ## Part 1: Try It Out — Redis Client Injection
@@ -429,7 +464,8 @@ wildfly-redis-feature-pack/
 │   ├── subsystem/          WildFly extension and subsystem implementation
 │   └── store/              Custom Infinispan NonBlockingStore backed by Redis
 ├── redis-client-feature-pack/  Galleon feature pack (layers, JBoss modules)
-└── redis-client-testsuite/     Integration tests (Arquillian + Testcontainers)
+├── redis-client-testsuite/     Integration tests (Arquillian + Testcontainers)
+└── redis-client-example/       Sample application demonstrating both features
 ```
 
 ## License
