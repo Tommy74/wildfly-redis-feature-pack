@@ -6,7 +6,6 @@ package org.wildfly.extension.redis.injection;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.NoSuchElementException;
 import java.util.Set;
 
 import redis.clients.jedis.HostAndPort;

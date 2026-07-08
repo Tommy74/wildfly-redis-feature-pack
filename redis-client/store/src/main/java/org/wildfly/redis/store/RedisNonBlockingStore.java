@@ -61,9 +61,10 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
     private static final Logger LOG = Logger.getLogger(RedisNonBlockingStore.class.getName());
 
     private static final long CONNECTION_LOG_INTERVAL_MS = 60_000;
-    private static final long RECONNECT_RETRY_INTERVAL_MS = 1_000;
-    private static final int MAX_RECONNECT_ATTEMPTS = 100;
-    private static final long MAX_RECONNECT_INTERVAL_MS = 30_000;
+
+    private final int maxReconnectAttempts;
+    private final long reconnectRetryIntervalMs;
+    private final long maxReconnectIntervalMs;
 
     private UnifiedJedis jedis;
     private String keyPrefix;
@@ -71,6 +72,16 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
     private MarshallableEntryFactory<K, V> entryFactory;
     private Executor nonBlockingExecutor;
     private volatile long lastConnectionLostLogMillis;
+
+    public RedisNonBlockingStore() {
+        this(30, 1_000, 30_000);
+    }
+
+    RedisNonBlockingStore(int maxReconnectAttempts, long reconnectRetryIntervalMs, long maxReconnectIntervalMs) {
+        this.maxReconnectAttempts = maxReconnectAttempts;
+        this.reconnectRetryIntervalMs = reconnectRetryIntervalMs;
+        this.maxReconnectIntervalMs = maxReconnectIntervalMs;
+    }
 
     @Override
     public CompletionStage<Void> start(InitializationContext ctx) {
@@ -131,11 +142,11 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
         }
     }
 
-    private <T> T executeWithReconnect(String operation, java.util.function.Supplier<T> supplier) {
+    <T> T executeWithReconnect(String operation, java.util.function.Supplier<T> supplier) {
         int attempts = 0;
-        long backoffMs = RECONNECT_RETRY_INTERVAL_MS;
-        
-        while (attempts < MAX_RECONNECT_ATTEMPTS) {
+        long backoffMs = reconnectRetryIntervalMs;
+
+        while (attempts < maxReconnectAttempts) {
             try {
                 T result = supplier.get();
                 if (lastConnectionLostLogMillis != 0) {
@@ -148,20 +159,20 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
                 long now = System.currentTimeMillis();
                 long lastLog = lastConnectionLostLogMillis;
                 if (lastLog == 0 || now - lastLog >= CONNECTION_LOG_INTERVAL_MS) {
-                    LOG.log(Level.SEVERE, 
-                        String.format("Redis connection lost during %s (attempt %d/%d), retrying in %dms", 
-                            operation, attempts, MAX_RECONNECT_ATTEMPTS, backoffMs), e);
+                    LOG.log(Level.SEVERE,
+                        String.format("Redis connection lost during %s (attempt %d/%d), retrying in %dms",
+                            operation, attempts, maxReconnectAttempts, backoffMs), e);
                     lastConnectionLostLogMillis = now;
                 }
-                
-                if (attempts >= MAX_RECONNECT_ATTEMPTS) {
+
+                if (attempts >= maxReconnectAttempts) {
                     throw new PersistenceException(
-                        "Failed to reconnect to Redis after " + MAX_RECONNECT_ATTEMPTS + " attempts during " + operation, e);
+                        "Failed to reconnect to Redis after " + maxReconnectAttempts + " attempts during " + operation, e);
                 }
-                
+
                 try {
                     Thread.sleep(backoffMs);
-                    backoffMs = Math.min(backoffMs * 2, MAX_RECONNECT_INTERVAL_MS);
+                    backoffMs = Math.min(backoffMs * 2, maxReconnectIntervalMs);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     throw new PersistenceException("Interrupted while reconnecting to Redis during " + operation, ie);
@@ -484,11 +495,27 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
     }
 
     private static HostAndPort parseHostAndPort(String s) {
-        int lastColon = s.lastIndexOf(':');
-        if (lastColon > 0) {
-            return new HostAndPort(s.substring(0, lastColon), Integer.parseInt(s.substring(lastColon + 1)));
+        String host;
+        int port;
+        if (s.startsWith("[")) {
+            int closeBracket = s.indexOf(']');
+            if (closeBracket < 0 || closeBracket + 2 >= s.length() || s.charAt(closeBracket + 1) != ':') {
+                throw new IllegalArgumentException("Invalid IPv6 address format: " + s + " (expected [host]:port)");
+            }
+            host = s.substring(1, closeBracket);
+            port = Integer.parseInt(s.substring(closeBracket + 2));
+        } else {
+            int lastColon = s.lastIndexOf(':');
+            if (lastColon <= 0) {
+                return new HostAndPort(s, 6379);
+            }
+            host = s.substring(0, lastColon);
+            port = Integer.parseInt(s.substring(lastColon + 1));
         }
-        return new HostAndPort(s, 6379);
+        if (port < 1 || port > 65535) {
+            throw new IllegalArgumentException("Port out of range (1-65535): " + port);
+        }
+        return new HostAndPort(host, port);
     }
 
     private static Set<HostAndPort> parseAllNodes(String[] parts) {

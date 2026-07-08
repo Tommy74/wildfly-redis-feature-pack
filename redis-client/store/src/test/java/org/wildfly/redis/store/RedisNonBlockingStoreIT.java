@@ -83,8 +83,12 @@ public class RedisNonBlockingStoreIT {
         if (directJedis != null) directJedis.close();
     }
 
-    @SuppressWarnings("unchecked")
     private RedisNonBlockingStore<String, String> createAndStartStore(String cacheName, boolean useConnectionRegistry) throws Exception {
+        return createAndStartStore(cacheName, useConnectionRegistry, CONN_NAME);
+    }
+
+    @SuppressWarnings("unchecked")
+    private RedisNonBlockingStore<String, String> createAndStartStore(String cacheName, boolean useConnectionRegistry, String connectionName) throws Exception {
         PersistenceMarshaller marshaller = mock(PersistenceMarshaller.class);
         when(marshaller.objectToByteBuffer(any())).thenAnswer(inv ->
                 inv.getArgument(0).toString().getBytes(StandardCharsets.UTF_8));
@@ -109,7 +113,7 @@ public class RedisNonBlockingStoreIT {
 
         Properties props = new Properties();
         if (useConnectionRegistry) {
-            props.setProperty("connection", CONN_NAME);
+            props.setProperty("connection", connectionName);
         } else {
             props.setProperty("cluster-nodes", redis.getHost() + ":" + redis.getMappedPort(6379));
         }
@@ -298,6 +302,18 @@ public class RedisNonBlockingStoreIT {
     void testStopWithoutStart() {
         RedisNonBlockingStore<?, ?> s = new RedisNonBlockingStore<>();
         assertDoesNotThrow(() -> s.stop().toCompletableFuture().get(5, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void testStartFailsWhenRedisUnreachable() {
+        String connName = "unreachable-conn";
+        RedisConnectionRegistry.register(connName,
+            new RedisClientConfig().clusterNodes(Set.of(new HostAndPort("127.0.0.1", 1))));
+        try {
+            assertThrows(Exception.class, () -> createAndStartStore("unreachable-test", true, connName));
+        } finally {
+            RedisConnectionRegistry.unregister(connName);
+        }
     }
 
     // --- raw Redis tests (kept for direct Redis behavior coverage) ---
