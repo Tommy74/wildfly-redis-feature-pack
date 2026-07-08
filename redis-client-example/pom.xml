@@ -38,6 +38,11 @@
             <artifactId>redis-client-injection</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -102,12 +107,50 @@
                     </execution>
                     <!-- Complete server with app pre-deployed -->
                     <execution>
-                        <id>provision-complete-server</id>
+                        <id>provision-complete-server-noe-1</id>
                         <goals>
                             <goal>package</goal>
                         </goals>
-                        <configuration combine.children="merge">
-                            <provisioning-dir>${project.build.directory}/server-complete</provisioning-dir>
+                        <configuration combine.children="append">
+                            <provisioning-dir>${project.build.directory}/server-complete-1</provisioning-dir>
+                            <packagingScripts combine.children="append">
+                                <packaging-script>
+                                    <commands>
+                                        <command>/subsystem=transactions:write-attribute(name=node-identifier,value="$\{jboss.tx.node.id:100\}")</command>
+                                        <command>/socket-binding-group=standard-sockets:write-attribute(name=port-offset,value="$\{jboss.socket.binding.port-offset:100\}")</command>
+                                        <!-- Part 1: Redis connection for CDI injection -->
+                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=127.0.0.1:6379)</command>
+                                        <!-- Part 2: Infinispan cache with Redis custom store -->
+                                        <command>/subsystem=infinispan/cache-container=mycontainer:add()</command>
+                                        <command>/subsystem=infinispan/cache-container=mycontainer/local-cache=mycache:add(modules=[org.wildfly.redis.store])</command>
+                                        <command>/subsystem=infinispan/cache-container=mycontainer/local-cache=mycache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                    </commands>
+                                </packaging-script>
+                            </packagingScripts>
+                        </configuration>
+                    </execution>
+                    <!-- Complete server with app pre-deployed -->
+                    <execution>
+                        <id>provision-complete-server-node-2</id>
+                        <goals>
+                            <goal>package</goal>
+                        </goals>
+                        <configuration combine.children="append">
+                            <provisioning-dir>${project.build.directory}/server-complete-2</provisioning-dir>
+                            <packagingScripts combine.children="append">
+                                <packaging-script>
+                                    <commands>
+                                        <command>/subsystem=transactions:write-attribute(name=node-identifier,value="$\{jboss.tx.node.id:200\}")</command>
+                                        <command>/socket-binding-group=standard-sockets:write-attribute(name=port-offset,value="$\{jboss.socket.binding.port-offset:200\}")</command>
+                                        <!-- Part 1: Redis connection for CDI injection -->
+                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=127.0.0.1:6379)</command>
+                                        <!-- Part 2: Infinispan cache with Redis custom store -->
+                                        <command>/subsystem=infinispan/cache-container=mycontainer:add()</command>
+                                        <command>/subsystem=infinispan/cache-container=mycontainer/local-cache=mycache:add(modules=[org.wildfly.redis.store])</command>
+                                        <command>/subsystem=infinispan/cache-container=mycontainer/local-cache=mycache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                    </commands>
+                                </packaging-script>
+                            </packagingScripts>
                         </configuration>
                     </execution>
                 </executions>

@@ -6,6 +6,7 @@
     </props>
     <dependencies>
         <layer name="redis-client"/>
+        <layer name="web-clustering"/>
     </dependencies>
     <packages>
         <package name="org.wildfly.redis.store"/>

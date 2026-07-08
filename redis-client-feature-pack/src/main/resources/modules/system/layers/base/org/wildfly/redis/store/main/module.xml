@@ -4,7 +4,7 @@
         <artifact name="${org.wildfly.redis:redis-client-store}"/>
     </resources>
     <dependencies>
-        <module name="org.infinispan"/>
+        <module name="org.infinispan.core"/>
         <module name="org.infinispan.commons"/>
         <module name="org.wildfly.extension.redis.injection"/>
         <module name="redis.clients.jedis"/>
