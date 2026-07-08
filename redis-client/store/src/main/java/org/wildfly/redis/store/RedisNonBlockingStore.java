@@ -219,6 +219,34 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
         return size(segments);
     }
 
+    @Override
+    public Publisher<MarshallableEntry<K, V>> publishEntries(IntSet segments, Predicate<? super K> filter, boolean includeValues) {
+        return subscriber -> {
+            nonBlockingExecutor.execute(() -> {
+                try {
+                    ScanParams params = new ScanParams().match(keyPrefix + "*").count(100);
+                    String cursor = ScanParams.SCAN_POINTER_START;
+                    do {
+                        ScanResult<String> result = jedis.scan(cursor, params);
+                        for (String key : result.getResult()) {
+                            byte[] data = jedis.get(key.getBytes());
+                            if (data != null) {
+                                MarshallableEntry<K, V> entry = bytesToEntry(data);
+                                if (entry != null && (filter == null || filter.test(entry.getKey()))) {
+                                    subscriber.onNext(entry);
+                                }
+                            }
+                        }
+                        cursor = result.getCursor();
+                    } while (!cursor.equals(ScanParams.SCAN_POINTER_START));
+                    subscriber.onComplete();
+                } catch (Exception e) {
+                    subscriber.onError(new PersistenceException("Failed to publish entries from Redis", e));
+                }
+            });
+        };
+    }
+
     private String toRedisKey(Object key) {
         try {
             byte[] keyBytes = marshaller.objectToByteBuffer(key);
