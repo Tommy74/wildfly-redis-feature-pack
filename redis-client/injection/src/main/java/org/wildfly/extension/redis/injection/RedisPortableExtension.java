@@ -27,12 +27,11 @@ public class RedisPortableExtension implements Extension {
             String name = entry.getKey();
             RedisClientConfig config = entry.getValue();
             abd.addBean()
-                    .types(UnifiedJedis.class)
-                    .qualifiers(new RedisConnectionLiteral(name))
+                    .addType(UnifiedJedis.class)
+                    .addQualifier(new RedisConnectionLiteral(name))
                     .scope(Dependent.class)
                     .name(name)
-                    .produceWith(instance -> pools.computeIfAbsent(name, k -> config.createUnifiedJedis()))
-                    .disposeWith((jedis, instance) -> { });
+                    .createWith(creationalContext -> pools.computeIfAbsent(name, k -> config.createUnifiedJedis()));
         }
     }
 

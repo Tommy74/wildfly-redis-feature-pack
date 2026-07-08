@@ -62,6 +62,8 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
 
     private static final long CONNECTION_LOG_INTERVAL_MS = 60_000;
     private static final long RECONNECT_RETRY_INTERVAL_MS = 1_000;
+    private static final int MAX_RECONNECT_ATTEMPTS = 100;
+    private static final long MAX_RECONNECT_INTERVAL_MS = 30_000;
 
     private UnifiedJedis jedis;
     private String keyPrefix;
@@ -130,7 +132,10 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
     }
 
     private <T> T executeWithReconnect(String operation, java.util.function.Supplier<T> supplier) {
-        while (true) {
+        int attempts = 0;
+        long backoffMs = RECONNECT_RETRY_INTERVAL_MS;
+        
+        while (attempts < MAX_RECONNECT_ATTEMPTS) {
             try {
                 T result = supplier.get();
                 if (lastConnectionLostLogMillis != 0) {
@@ -139,20 +144,31 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
                 }
                 return result;
             } catch (JedisConnectionException e) {
+                attempts++;
                 long now = System.currentTimeMillis();
                 long lastLog = lastConnectionLostLogMillis;
                 if (lastLog == 0 || now - lastLog >= CONNECTION_LOG_INTERVAL_MS) {
-                    LOG.log(Level.SEVERE, "Redis connection lost during " + operation + ", retrying every second", e);
+                    LOG.log(Level.SEVERE, 
+                        String.format("Redis connection lost during %s (attempt %d/%d), retrying in %dms", 
+                            operation, attempts, MAX_RECONNECT_ATTEMPTS, backoffMs), e);
                     lastConnectionLostLogMillis = now;
                 }
+                
+                if (attempts >= MAX_RECONNECT_ATTEMPTS) {
+                    throw new PersistenceException(
+                        "Failed to reconnect to Redis after " + MAX_RECONNECT_ATTEMPTS + " attempts during " + operation, e);
+                }
+                
                 try {
-                    Thread.sleep(RECONNECT_RETRY_INTERVAL_MS);
+                    Thread.sleep(backoffMs);
+                    backoffMs = Math.min(backoffMs * 2, MAX_RECONNECT_INTERVAL_MS);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     throw new PersistenceException("Interrupted while reconnecting to Redis during " + operation, ie);
                 }
             }
         }
+        throw new PersistenceException("Unexpected exit from reconnect loop during " + operation);
     }
 
     @Override

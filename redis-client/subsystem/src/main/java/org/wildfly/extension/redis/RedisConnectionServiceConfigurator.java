@@ -106,19 +106,56 @@ public class RedisConnectionServiceConfigurator implements ResourceServiceConfig
         };
     }
 
-    private static Set<HostAndPort> parseClusterNodes(String clusterNodesValue) {
+    private static Set<HostAndPort> parseClusterNodes(String clusterNodesValue) throws OperationFailedException {
         if (clusterNodesValue == null || clusterNodesValue.isBlank()) {
             return new HashSet<>();
         }
         Set<HostAndPort> clusterNodes = new HashSet<>();
         for (String node : clusterNodesValue.split(",")) {
             String trimmed = node.trim();
-            int lastColon = trimmed.lastIndexOf(':');
-            if (lastColon > 0) {
-                String nodeHost = trimmed.substring(0, lastColon);
-                int nodePort = Integer.parseInt(trimmed.substring(lastColon + 1));
-                clusterNodes.add(new HostAndPort(nodeHost, nodePort));
+            if (trimmed.isEmpty()) {
+                continue;
             }
+            
+            String host;
+            int port;
+            
+            // Handle IPv6 addresses: [host]:port
+            if (trimmed.startsWith("[")) {
+                int closeBracket = trimmed.indexOf(']');
+                if (closeBracket < 0 || closeBracket + 1 >= trimmed.length() || trimmed.charAt(closeBracket + 1) != ':') {
+                    throw new OperationFailedException("Invalid IPv6 address format: " + trimmed + 
+                        ". Expected format: [host]:port");
+                }
+                host = trimmed.substring(1, closeBracket);
+                try {
+                    port = Integer.parseInt(trimmed.substring(closeBracket + 2));
+                } catch (NumberFormatException e) {
+                    throw new OperationFailedException("Invalid port number in: " + trimmed);
+                }
+            } else {
+                // IPv4 or hostname
+                int lastColon = trimmed.lastIndexOf(':');
+                if (lastColon <= 0) {
+                    throw new OperationFailedException("Missing port in cluster node: " + trimmed + 
+                        ". Expected format: host:port");
+                }
+                host = trimmed.substring(0, lastColon);
+                try {
+                    port = Integer.parseInt(trimmed.substring(lastColon + 1));
+                } catch (NumberFormatException e) {
+                    throw new OperationFailedException("Invalid port number in: " + trimmed);
+                }
+            }
+            
+            if (host.isEmpty()) {
+                throw new OperationFailedException("Empty host in cluster node: " + trimmed);
+            }
+            if (port < 1 || port > 65535) {
+                throw new OperationFailedException("Port out of range (1-65535): " + port + " in " + trimmed);
+            }
+            
+            clusterNodes.add(new HostAndPort(host, port));
         }
         return clusterNodes;
     }

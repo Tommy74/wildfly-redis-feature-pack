@@ -73,6 +73,12 @@ public class RedisClientConfig {
     }
 
     private JedisPooled createJedisPooled() {
+        if (clusterNodes == null || clusterNodes.isEmpty()) {
+            throw new IllegalStateException(
+                "Cannot create Redis connection: no cluster nodes configured. " +
+                "Please configure 'cluster-nodes' or 'outbound-socket-bindings'.");
+        }
+        
         ConnectionPoolConfig poolConfig = new ConnectionPoolConfig();
         poolConfig.setMaxTotal(maxPoolSize);
         poolConfig.setMinIdle(minIdle);

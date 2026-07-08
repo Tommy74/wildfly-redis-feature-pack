@@ -64,6 +64,6 @@ public class RedisClientConfigTest {
     @org.junit.jupiter.api.Test
     void testCreateUnifiedJedisWithEmptyNodesThrows() {
         RedisClientConfig config = new RedisClientConfig();
-        assertThrows(NoSuchElementException.class, config::createUnifiedJedis);
+        assertThrows(IllegalStateException.class, config::createUnifiedJedis);
     }
 }
