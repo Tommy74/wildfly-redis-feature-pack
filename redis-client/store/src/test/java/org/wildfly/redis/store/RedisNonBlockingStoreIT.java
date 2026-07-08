@@ -73,7 +73,8 @@ public class RedisNonBlockingStoreIT {
         var chars = store.characteristics();
         assertTrue(chars.contains(org.infinispan.persistence.spi.NonBlockingStore.Characteristic.BULK_READ));
         assertTrue(chars.contains(org.infinispan.persistence.spi.NonBlockingStore.Characteristic.EXPIRATION));
-        assertEquals(2, chars.size());
+        assertTrue(chars.contains(org.infinispan.persistence.spi.NonBlockingStore.Characteristic.SHAREABLE));
+        assertEquals(3, chars.size());
     }
 
     @Test

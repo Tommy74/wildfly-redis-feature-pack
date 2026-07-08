@@ -120,7 +120,7 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
 
     @Override
     public Set<Characteristic> characteristics() {
-        return EnumSet.of(Characteristic.BULK_READ, Characteristic.EXPIRATION);
+        return EnumSet.of(Characteristic.BULK_READ, Characteristic.EXPIRATION, Characteristic.SHAREABLE);
     }
 
     @Override

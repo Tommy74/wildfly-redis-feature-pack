@@ -79,9 +79,9 @@
                                     <!-- Part 1: Redis connection for CDI injection -->
                                     <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=127.0.0.1:6379)</command>
                                     <!-- Part 2: Infinispan cache with Redis custom store -->
-                                    <command>/subsystem=infinispan/cache-container=mycontainer:add()</command>
-                                    <command>/subsystem=infinispan/cache-container=mycontainer/local-cache=mycache:add(modules=[org.wildfly.redis.store])</command>
-                                    <command>/subsystem=infinispan/cache-container=mycontainer/local-cache=mycache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                    <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache:add(modules=[org.wildfly.redis.store])</command>
+                                    <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                    <command>/subsystem=infinispan/cache-container=web:write-attribute(name=default-cache,value=redis-cache)</command>
                                 </commands>
                             </packaging-script>
                         </packagingScripts>
@@ -121,9 +121,9 @@
                                         <!-- Part 1: Redis connection for CDI injection -->
                                         <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=127.0.0.1:6379)</command>
                                         <!-- Part 2: Infinispan cache with Redis custom store -->
-                                        <command>/subsystem=infinispan/cache-container=mycontainer:add()</command>
-                                        <command>/subsystem=infinispan/cache-container=mycontainer/local-cache=mycache:add(modules=[org.wildfly.redis.store])</command>
-                                        <command>/subsystem=infinispan/cache-container=mycontainer/local-cache=mycache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                        <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache:add(modules=[org.wildfly.redis.store])</command>
+                                        <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                        <command>/subsystem=infinispan/cache-container=web:write-attribute(name=default-cache,value=redis-cache)</command>
                                     </commands>
                                 </packaging-script>
                             </packagingScripts>
@@ -145,9 +145,9 @@
                                         <!-- Part 1: Redis connection for CDI injection -->
                                         <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=127.0.0.1:6379)</command>
                                         <!-- Part 2: Infinispan cache with Redis custom store -->
-                                        <command>/subsystem=infinispan/cache-container=mycontainer:add()</command>
-                                        <command>/subsystem=infinispan/cache-container=mycontainer/local-cache=mycache:add(modules=[org.wildfly.redis.store])</command>
-                                        <command>/subsystem=infinispan/cache-container=mycontainer/local-cache=mycache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                        <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache:add(modules=[org.wildfly.redis.store])</command>
+                                        <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                        <command>/subsystem=infinispan/cache-container=web:write-attribute(name=default-cache,value=redis-cache)</command>
                                     </commands>
                                 </packaging-script>
                             </packagingScripts>
