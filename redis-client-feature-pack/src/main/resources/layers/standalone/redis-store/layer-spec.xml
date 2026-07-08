@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<layer-spec xmlns="urn:jboss:galleon:layer-spec:2.0" name="redis-store">
+    <props>
+        <prop name="org.wildfly.category" value="Data Stores"/>
+        <prop name="org.wildfly.stability" value="community"/>
+    </props>
+    <dependencies>
+        <layer name="redis-client"/>
+    </dependencies>
+    <packages>
+        <package name="org.wildfly.redis.store"/>
+    </packages>
+</layer-spec>

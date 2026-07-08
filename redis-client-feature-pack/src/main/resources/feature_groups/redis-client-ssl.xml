@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature-group-spec name="redis-client-ssl" xmlns="urn:jboss:galleon:feature-group:1.0">
+    <feature spec="subsystem.elytron">
+        <feature spec="subsystem.elytron.key-store">
+            <param name="key-store" value="redis-truststore"/>
+            <param name="credential-reference" value="{clear-text=${redis.truststore.password:changeit}}"/>
+            <param name="path" value="${redis.truststore.path:redis-truststore.p12}"/>
+            <param name="required" value="false"/>
+            <param name="type" value="${redis.truststore.type:PKCS12}"/>
+        </feature>
+        <feature spec="subsystem.elytron.trust-manager">
+            <param name="trust-manager" value="redis-trust-manager"/>
+            <param name="key-store" value="redis-truststore"/>
+        </feature>
+        <feature spec="subsystem.elytron.client-ssl-context">
+            <param name="client-ssl-context" value="redis-ssl-context"/>
+            <param name="trust-manager" value="redis-trust-manager"/>
+        </feature>
+    </feature>
+</feature-group-spec>

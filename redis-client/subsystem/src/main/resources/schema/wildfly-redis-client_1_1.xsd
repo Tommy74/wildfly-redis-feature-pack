@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:jboss:domain:redis-client:1.1"
+           xmlns="urn:jboss:domain:redis-client:1.1"
+           elementFormDefault="qualified"
+           attributeFormDefault="unqualified"
+           version="1.1">
+
+    <xs:element name="subsystem" type="subsystemType"/>
+
+    <xs:complexType name="subsystemType">
+        <xs:sequence>
+            <xs:element name="redis-connection" type="redisConnectionType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="redisConnectionType">
+        <xs:attribute name="name" type="xs:string" use="required"/>
+        <xs:attribute name="cluster-nodes" type="xs:string"/>
+        <xs:attribute name="outbound-socket-bindings" type="xs:string"/>
+        <xs:attribute name="password" type="xs:string"/>
+        <xs:attribute name="ssl" type="xs:boolean" default="false"/>
+        <xs:attribute name="ssl-context" type="xs:string"/>
+        <xs:attribute name="connection-timeout" type="xs:int" default="2000"/>
+        <xs:attribute name="max-pool-size" type="xs:int" default="8"/>
+        <xs:attribute name="min-idle" type="xs:int" default="0"/>
+    </xs:complexType>
+</xs:schema>

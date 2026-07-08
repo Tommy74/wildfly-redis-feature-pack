@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module xmlns="urn:jboss:module:1.9" name="org.wildfly.extension.redis.injection">
+    <resources>
+        <artifact name="${org.wildfly.redis:redis-client-injection}"/>
+    </resources>
+    <dependencies>
+        <module name="jakarta.enterprise.api"/>
+        <module name="jakarta.inject.api"/>
+        <module name="org.jboss.logging"/>
+        <module name="redis.clients.jedis"/>
+    </dependencies>
+</module>

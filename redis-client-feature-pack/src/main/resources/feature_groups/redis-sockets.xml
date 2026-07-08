@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature-group-spec name="redis-sockets" xmlns="urn:jboss:galleon:feature-group:1.0">
+    <feature spec="socket-binding-group">
+        <param name="socket-binding-group" value="standard-sockets"/>
+        <feature spec="socket-binding-group.remote-destination-outbound-socket-binding">
+            <param name="remote-destination-outbound-socket-binding" value="redis-server"/>
+            <param name="host" value="${redis.host:localhost}"/>
+            <param name="port" value="${redis.port:6379}"/>
+        </feature>
+    </feature>
+</feature-group-spec>

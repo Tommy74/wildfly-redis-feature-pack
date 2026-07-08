@@ -1,0 +1,8 @@
+<subsystem xmlns="urn:jboss:domain:redis-client:1.1">
+    <redis-connection name="default"
+        cluster-nodes="127.0.0.1:6379"
+        ssl="false"
+        connection-timeout="2000"
+        max-pool-size="8"
+        min-idle="0"/>
+</subsystem>

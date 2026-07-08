@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module xmlns="urn:jboss:module:1.9" name="org.wildfly.redis.store">
+    <resources>
+        <artifact name="${org.wildfly.redis:redis-client-store}"/>
+    </resources>
+    <dependencies>
+        <module name="org.infinispan"/>
+        <module name="org.infinispan.commons"/>
+        <module name="org.wildfly.extension.redis.injection"/>
+        <module name="redis.clients.jedis"/>
+        <module name="java.logging"/>
+    </dependencies>
+</module>
