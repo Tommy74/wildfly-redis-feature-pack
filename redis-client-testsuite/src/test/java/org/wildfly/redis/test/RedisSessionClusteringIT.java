@@ -51,6 +51,8 @@ public class RedisSessionClusteringIT {
     private static final String APP_CONTEXT = "/session-test";
 
     private static HttpClient httpClient;
+    private static String jbossHome1;
+    private static String jbossHome2;
 
     @BeforeAll
     static void setup() throws Exception {
@@ -73,8 +75,8 @@ public class RedisSessionClusteringIT {
             assertEquals("PONG", verifyJedis.ping(), "Redis must be reachable");
         }
 
-        String jbossHome1 = System.getProperty("jboss.home.session1");
-        String jbossHome2 = System.getProperty("jboss.home.session2");
+        jbossHome1 = System.getProperty("jboss.home.session1");
+        jbossHome2 = System.getProperty("jboss.home.session2");
         assertNotNull(jbossHome1, "jboss.home.session1 must be set");
         assertNotNull(jbossHome2, "jboss.home.session2 must be set");
 
@@ -161,6 +163,44 @@ public class RedisSessionClusteringIT {
         assertEquals(200, response.statusCode(), "Response: " + response.body());
         assertTrue(response.body().contains("\"value\":\"BLUE\""),
                 "Node 2 should return session data created on node 1: " + response.body());
+    }
+
+    @Test
+    @Order(4)
+    void testFailoverUpdateAndRecovery() throws Exception {
+        stopProcess(node1Process);
+        Thread.sleep(3000);
+
+        HttpRequest putRequest = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + NODE2_HTTP_PORT + APP_CONTEXT + "/api/session/color/RED"))
+                .PUT(HttpRequest.BodyPublishers.noBody())
+                .build();
+        HttpResponse<String> putResponse = httpClient.send(putRequest, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, putResponse.statusCode(), "PUT on node 2 after node 1 killed: " + putResponse.body());
+        assertTrue(putResponse.body().contains("\"value\":\"RED\""), "Response should contain RED: " + putResponse.body());
+
+        node1Process = startWildFly(jbossHome1, "127.0.0.1", REDIS_PORT);
+        waitForManagement(NODE1_HTTP_PORT - 8080 + 9990, 120);
+
+        WebArchive war = ShrinkWrap.create(WebArchive.class, "session-test.war")
+                .addClasses(SessionTestApplication.class, SessionTestResource.class)
+                .addAsWebInfResource(new StringAsset(
+                        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                        "<web-app xmlns=\"https://jakarta.ee/xml/ns/jakartaee\" version=\"6.0\">\n" +
+                        "    <distributable/>\n" +
+                        "</web-app>"), "web.xml");
+        File warFile = new File(jbossHome1, "standalone/deployments/session-test.war");
+        war.as(ZipExporter.class).exportTo(warFile, true);
+        waitForApp(NODE1_HTTP_PORT, APP_CONTEXT, 120);
+
+        HttpRequest getRequest = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + NODE1_HTTP_PORT + APP_CONTEXT + "/api/session/color"))
+                .GET()
+                .build();
+        HttpResponse<String> getResponse = httpClient.send(getRequest, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, getResponse.statusCode(), "GET from restarted node 1: " + getResponse.body());
+        assertTrue(getResponse.body().contains("\"value\":\"RED\""),
+                "Restarted node 1 should return updated value from Redis: " + getResponse.body());
     }
 
     private static Process startWildFly(String jbossHome, String redisHost, int redisPort) throws Exception {

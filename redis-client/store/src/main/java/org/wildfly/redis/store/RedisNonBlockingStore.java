@@ -39,6 +39,7 @@ import org.wildfly.extension.redis.injection.RedisConnectionRegistry;
 
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.UnifiedJedis;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.params.ScanParams;
 import redis.clients.jedis.resps.ScanResult;
 
@@ -59,11 +60,15 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
 
     private static final Logger LOG = Logger.getLogger(RedisNonBlockingStore.class.getName());
 
+    private static final long CONNECTION_LOG_INTERVAL_MS = 60_000;
+    private static final long RECONNECT_RETRY_INTERVAL_MS = 1_000;
+
     private UnifiedJedis jedis;
     private String keyPrefix;
     private PersistenceMarshaller marshaller;
     private MarshallableEntryFactory<K, V> entryFactory;
     private Executor nonBlockingExecutor;
+    private volatile long lastConnectionLostLogMillis;
 
     @Override
     public CompletionStage<Void> start(InitializationContext ctx) {
@@ -124,6 +129,32 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
         }
     }
 
+    private <T> T executeWithReconnect(String operation, java.util.function.Supplier<T> supplier) {
+        while (true) {
+            try {
+                T result = supplier.get();
+                if (lastConnectionLostLogMillis != 0) {
+                    LOG.info("Redis connection restored during " + operation);
+                    lastConnectionLostLogMillis = 0;
+                }
+                return result;
+            } catch (JedisConnectionException e) {
+                long now = System.currentTimeMillis();
+                long lastLog = lastConnectionLostLogMillis;
+                if (lastLog == 0 || now - lastLog >= CONNECTION_LOG_INTERVAL_MS) {
+                    LOG.log(Level.SEVERE, "Redis connection lost during " + operation + ", retrying every second", e);
+                    lastConnectionLostLogMillis = now;
+                }
+                try {
+                    Thread.sleep(RECONNECT_RETRY_INTERVAL_MS);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new PersistenceException("Interrupted while reconnecting to Redis during " + operation, ie);
+                }
+            }
+        }
+    }
+
     @Override
     public CompletionStage<Void> stop() {
         if (jedis != null) {
@@ -145,12 +176,14 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
     public CompletionStage<MarshallableEntry<K, V>> load(int segment, Object key) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                String redisKey = toRedisKey(key);
-                byte[] data = jedis.get(redisKey.getBytes());
-                if (data == null) {
-                    return null;
-                }
-                return bytesToEntry(data);
+                return executeWithReconnect("load", () -> {
+                    String redisKey = toRedisKey(key);
+                    byte[] data = jedis.get(redisKey.getBytes());
+                    if (data == null) {
+                        return null;
+                    }
+                    return bytesToEntry(data);
+                });
             } catch (Exception e) {
                 throw new PersistenceException("Failed to load key from Redis", e);
             }
@@ -161,19 +194,21 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
     public CompletionStage<Void> write(int segment, MarshallableEntry<? extends K, ? extends V> entry) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                String redisKey = toRedisKey(entry.getKey());
-                byte[] data = entryToBytes(entry);
+                return executeWithReconnect("write", () -> {
+                    String redisKey = toRedisKey(entry.getKey());
+                    byte[] data = entryToBytes(entry);
 
-                long expiryTime = entry.expiryTime();
-                if (expiryTime > 0 && expiryTime < Long.MAX_VALUE) {
-                    long ttlMs = expiryTime - System.currentTimeMillis();
-                    if (ttlMs > 0) {
-                        jedis.psetex(redisKey.getBytes(), ttlMs, data);
+                    long expiryTime = entry.expiryTime();
+                    if (expiryTime > 0 && expiryTime < Long.MAX_VALUE) {
+                        long ttlMs = expiryTime - System.currentTimeMillis();
+                        if (ttlMs > 0) {
+                            jedis.psetex(redisKey.getBytes(), ttlMs, data);
+                        }
+                    } else {
+                        jedis.set(redisKey.getBytes(), data);
                     }
-                } else {
-                    jedis.set(redisKey.getBytes(), data);
-                }
-                return null;
+                    return (Void) null;
+                });
             } catch (Exception e) {
                 throw new PersistenceException("Failed to write entry to Redis", e);
             }
@@ -184,9 +219,11 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
     public CompletionStage<Boolean> delete(int segment, Object key) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                String redisKey = toRedisKey(key);
-                long removed = jedis.del(redisKey);
-                return removed > 0;
+                return executeWithReconnect("delete", () -> {
+                    String redisKey = toRedisKey(key);
+                    long removed = jedis.del(redisKey);
+                    return removed > 0;
+                });
             } catch (Exception e) {
                 throw new PersistenceException("Failed to delete key from Redis", e);
             }
@@ -197,16 +234,18 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
     public CompletionStage<Void> clear() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                ScanParams params = new ScanParams().match(keyPrefix + "*").count(100);
-                String cursor = ScanParams.SCAN_POINTER_START;
-                do {
-                    ScanResult<String> result = jedis.scan(cursor, params);
-                    for (String key : result.getResult()) {
-                        jedis.del(key);
-                    }
-                    cursor = result.getCursor();
-                } while (!cursor.equals(ScanParams.SCAN_POINTER_START));
-                return null;
+                return executeWithReconnect("clear", () -> {
+                    ScanParams params = new ScanParams().match(keyPrefix + "*").count(100);
+                    String cursor = ScanParams.SCAN_POINTER_START;
+                    do {
+                        ScanResult<String> result = jedis.scan(cursor, params);
+                        for (String key : result.getResult()) {
+                            jedis.del(key);
+                        }
+                        cursor = result.getCursor();
+                    } while (!cursor.equals(ScanParams.SCAN_POINTER_START));
+                    return (Void) null;
+                });
             } catch (Exception e) {
                 throw new PersistenceException("Failed to clear Redis store", e);
             }
@@ -217,15 +256,17 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
     public CompletionStage<Long> size(IntSet segments) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                long count = 0;
-                ScanParams params = new ScanParams().match(keyPrefix + "*").count(100);
-                String cursor = ScanParams.SCAN_POINTER_START;
-                do {
-                    ScanResult<String> result = jedis.scan(cursor, params);
-                    count += result.getResult().size();
-                    cursor = result.getCursor();
-                } while (!cursor.equals(ScanParams.SCAN_POINTER_START));
-                return count;
+                return executeWithReconnect("size", () -> {
+                    long count = 0;
+                    ScanParams params = new ScanParams().match(keyPrefix + "*").count(100);
+                    String cursor = ScanParams.SCAN_POINTER_START;
+                    do {
+                        ScanResult<String> result = jedis.scan(cursor, params);
+                        count += result.getResult().size();
+                        cursor = result.getCursor();
+                    } while (!cursor.equals(ScanParams.SCAN_POINTER_START));
+                    return count;
+                });
             } catch (Exception e) {
                 throw new PersistenceException("Failed to get Redis store size", e);
             }
@@ -242,7 +283,7 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
         return subscriber -> nonBlockingExecutor.execute(() -> {
             List<MarshallableEntry<K, V>> entries;
             try {
-                entries = scanAllEntries(filter);
+                entries = executeWithReconnect("publishEntries", () -> scanAllEntries(filter));
             } catch (Exception e) {
                 subscriber.onSubscribe(EMPTY_SUBSCRIPTION);
                 subscriber.onError(new PersistenceException("Failed to scan entries from Redis", e));
