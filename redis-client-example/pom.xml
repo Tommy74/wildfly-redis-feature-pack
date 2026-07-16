@@ -95,6 +95,18 @@
                 <groupId>org.wildfly.plugins</groupId>
                 <artifactId>wildfly-maven-plugin</artifactId>
                 <executions>
+                    <!-- CLI commands for "mvn wildfly:dev" (runs on live server before deployment) -->
+                    <execution>
+                        <id>default-cli</id>
+                        <configuration>
+                            <commands>
+                                <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=127.0.0.1:6379)</command>
+                                <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache:add(modules=[org.wildfly.redis.store])</command>
+                                <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                <command>/subsystem=infinispan/cache-container=web:write-attribute(name=default-cache,value=redis-cache)</command>
+                            </commands>
+                        </configuration>
+                    </execution>
                     <!-- Dev server for "mvn wildfly:dev" (no app pre-deployed) -->
                     <execution>
                         <id>provision-dev-server</id>

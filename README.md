@@ -45,7 +45,7 @@ mvn clean install -DskipTests -Denforcer.skip
 
 ```bash
 cd redis-client-example
-mvn wildfly:dev -Denforcer.skip
+mvn clean wildfly:dev -Denforcer.skip
 ```
 
 **4. Test direct Redis operations** (Part 1 — CDI injection of `UnifiedJedis`)
@@ -59,6 +59,13 @@ curl http://localhost:8080/redis-example/api/redis/get/hello
 ```
 
 The provisioned server also includes an Infinispan cache backed by the Redis custom store (Part 2). Any WildFly subsystem or application that uses this cache will have its entries automatically persisted to Redis.
+
+Verify data is in Redis**
+
+```bash
+podman exec redis redis-cli keys '*'
+hello
+```
 
 ### Testing Clustered Sessions with Redis
 
