@@ -53,7 +53,7 @@ public class RedisCustomStoreIT {
                 jbossHome + "/bin/standalone.sh",
                 "--stability=community",
                 "-Djboss.socket.binding.port-offset=" + PORT_OFFSET,
-                "-Dredis.cluster.nodes=" + redisHost + ":" + redisPort
+                "-Djboss.redis-client.redis-connection.cluster-nodes=" + redisHost + ":" + redisPort
         );
         pb.directory(new File(jbossHome));
         pb.redirectErrorStream(true);

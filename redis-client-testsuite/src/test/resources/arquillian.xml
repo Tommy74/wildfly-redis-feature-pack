@@ -8,7 +8,7 @@
             <property name="startupTimeoutInSeconds">120</property>
             <property name="managementPort">10090</property>
             <property name="jbossArguments">--stability=community</property>
-            <property name="javaVmArguments">-Xmx512m -Djboss.socket.binding.port-offset=100 -Dredis.cluster.nodes=${redis.cluster.nodes:127.0.0.1:6379} -Dredis.socket.host=${redis.socket.host:127.0.0.1} -Dredis.socket.port=${redis.socket.port:6379}</property>
+            <property name="javaVmArguments">-Xmx512m -Djboss.socket.binding.port-offset=100 -Djboss.redis-client.redis-connection.cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379} -Dredis.socket.host=${redis.socket.host:127.0.0.1} -Dredis.socket.port=${redis.socket.port:6379}</property>
         </configuration>
     </container>
 </arquillian>

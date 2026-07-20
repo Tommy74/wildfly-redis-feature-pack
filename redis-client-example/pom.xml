@@ -77,10 +77,10 @@
                             <packaging-script>
                                 <commands>
                                     <!-- Part 1: Redis connection for CDI injection -->
-                                    <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=127.0.0.1:6379)</command>
+                                    <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379})</command>
                                     <!-- Part 2: Infinispan cache with Redis custom store -->
                                     <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache:add(modules=[org.wildfly.redis.store])</command>
-                                    <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                    <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default, cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379}})</command>
                                     <command>/subsystem=infinispan/cache-container=web:write-attribute(name=default-cache,value=redis-cache)</command>
                                 </commands>
                             </packaging-script>
@@ -100,9 +100,9 @@
                         <id>default-cli</id>
                         <configuration>
                             <commands>
-                                <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=127.0.0.1:6379)</command>
+                                <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379})</command>
                                 <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache:add(modules=[org.wildfly.redis.store])</command>
-                                <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default, cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379}})</command>
                                 <command>/subsystem=infinispan/cache-container=web:write-attribute(name=default-cache,value=redis-cache)</command>
                             </commands>
                         </configuration>
@@ -134,10 +134,10 @@
                                         <command>/subsystem=transactions:write-attribute(name=node-identifier,value="$\{jboss.tx.node.id:100\}")</command>
                                         <command>/socket-binding-group=standard-sockets:write-attribute(name=port-offset,value="$\{jboss.socket.binding.port-offset:100\}")</command>
                                         <!-- Part 1: Redis connection for CDI injection -->
-                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=127.0.0.1:6379)</command>
+                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379})</command>
                                         <!-- Part 2: Infinispan cache with Redis custom store -->
                                         <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache:add(modules=[org.wildfly.redis.store])</command>
-                                        <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                        <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default, cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379}})</command>
                                         <command>/subsystem=infinispan/cache-container=web:write-attribute(name=default-cache,value=redis-cache)</command>
                                     </commands>
                                 </packaging-script>
@@ -161,10 +161,10 @@
                                         <command>/subsystem=transactions:write-attribute(name=node-identifier,value="$\{jboss.tx.node.id:200\}")</command>
                                         <command>/socket-binding-group=standard-sockets:write-attribute(name=port-offset,value="$\{jboss.socket.binding.port-offset:200\}")</command>
                                         <!-- Part 1: Redis connection for CDI injection -->
-                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=127.0.0.1:6379)</command>
+                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379})</command>
                                         <!-- Part 2: Infinispan cache with Redis custom store -->
                                         <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache:add(modules=[org.wildfly.redis.store])</command>
-                                        <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                        <command>/subsystem=infinispan/cache-container=web/invalidation-cache=redis-cache/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default, cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379}})</command>
                                         <command>/subsystem=infinispan/cache-container=web:write-attribute(name=default-cache,value=redis-cache)</command>
                                     </commands>
                                 </packaging-script>

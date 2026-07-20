@@ -132,7 +132,7 @@
                                 <packaging-script>
                                     <commands>
                                         <!-- Default connection using cluster-nodes -->
-                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${redis.cluster.nodes:127.0.0.1:6379})</command>
+                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379})</command>
                                         <!-- Connection using outbound socket binding -->
                                         <command>/socket-binding-group=standard-sockets/remote-destination-outbound-socket-binding=redis-test-server:add(host=${redis.socket.host:127.0.0.1},port=${redis.socket.port:6379})</command>
                                         <command>/subsystem=redis-client/redis-connection=socket-binding-conn:add(outbound-socket-bindings=[redis-test-server])</command>
@@ -179,10 +179,10 @@
                                         <command>/subsystem=undertow:write-attribute(name=instance-id,value="session-node-1")</command>
                                         <command>/subsystem=transactions:write-attribute(name=node-identifier,value="session-node-1")</command>
                                         <command>/socket-binding-group=standard-sockets:write-attribute(name=port-offset,value="$\{jboss.socket.binding.port-offset:400\}")</command>
-                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${redis.cluster.nodes:127.0.0.1:6379})</command>
+                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379})</command>
                                         <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist:write-attribute(name=modules,value=[org.wildfly.redis.store])</command>
                                         <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist/store=file:remove()</command>
-                                        <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                        <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default, cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379}})</command>
                                     </commands>
                                 </packaging-script>
                             </packagingScripts>
@@ -225,10 +225,10 @@
                                         <command>/subsystem=undertow:write-attribute(name=instance-id,value="session-node-2")</command>
                                         <command>/subsystem=transactions:write-attribute(name=node-identifier,value="session-node-2")</command>
                                         <command>/socket-binding-group=standard-sockets:write-attribute(name=port-offset,value="$\{jboss.socket.binding.port-offset:500\}")</command>
-                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${redis.cluster.nodes:127.0.0.1:6379})</command>
+                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379})</command>
                                         <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist:write-attribute(name=modules,value=[org.wildfly.redis.store])</command>
                                         <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist/store=file:remove()</command>
-                                        <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default})</command>
+                                        <command>/subsystem=infinispan/cache-container=web/distributed-cache=dist/store=custom:add(class=org.wildfly.redis.store.RedisStoreConfigurationBuilder, passivation=false, preload=false, purge=false, shared=true, properties={connection=default, cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379}})</command>
                                     </commands>
                                 </packaging-script>
                             </packagingScripts>
@@ -267,7 +267,7 @@
                             <packagingScripts>
                                 <packaging-script>
                                     <commands>
-                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${redis.cluster.nodes:127.0.0.1:6379})</command>
+                                        <command>/subsystem=redis-client/redis-connection=default:add(cluster-nodes=${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379})</command>
                                     </commands>
                                 </packaging-script>
                             </packagingScripts>

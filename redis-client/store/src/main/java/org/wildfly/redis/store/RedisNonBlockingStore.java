@@ -46,12 +46,18 @@ import redis.clients.jedis.resps.ScanResult;
 /**
  * An Infinispan {@link NonBlockingStore} backed by Redis via Jedis.
  * <p>
- * Configuration is read from Infinispan store properties:
- * <ul>
+ * Configuration is read from Infinispan store properties (checked in this order):
+ * <ol>
+ *   <li>{@code cluster-nodes} — comma-separated host:port pairs (takes precedence when present).
+ *       Recommended expression: {@code ${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379}}</li>
  *   <li>{@code connection} — references a named redis-client subsystem connection
- *       via {@link RedisConnectionRegistry} (preferred)</li>
- *   <li>{@code cluster-nodes} — comma-separated host:port pairs (fallback, default: 127.0.0.1:6379)</li>
- *   <li>{@code password} — Redis password (optional)</li>
+ *       via {@link RedisConnectionRegistry} (fallback when cluster-nodes is not set)</li>
+ *   <li>If neither is set, connects to {@code 127.0.0.1:6379}</li>
+ * </ol>
+ * <p>
+ * Additional properties:
+ * <ul>
+ *   <li>{@code password} — Redis password (optional, used with cluster-nodes)</li>
  * </ul>
  * <p>
  * Redis key format: {@code wf:ispn:{cacheName}:{base64(marshalledKey)}}
@@ -106,6 +112,21 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
         StoreConfiguration config = ctx.getConfiguration();
         Properties props = config.properties();
 
+        String clusterNodes = props != null ? props.getProperty("cluster-nodes") : null;
+        if (clusterNodes != null && !clusterNodes.isEmpty()) {
+            String password = props != null ? props.getProperty("password") : null;
+            String[] parts = clusterNodes.split(",");
+            RedisClientConfig directConfig = new RedisClientConfig()
+                    .clusterNodes(parseAllNodes(parts));
+            if (password != null && !password.isEmpty()) {
+                directConfig.password(password);
+            }
+            this.jedis = directConfig.createUnifiedJedis();
+            LOG.info("Redis store started using cluster-nodes property: " + clusterNodes);
+            validateConnection();
+            return;
+        }
+
         String connectionName = props != null ? props.getProperty("connection") : null;
         if (connectionName != null) {
             RedisClientConfig clientConfig = RedisConnectionRegistry.get(connectionName);
@@ -115,20 +136,13 @@ public class RedisNonBlockingStore<K, V> implements NonBlockingStore<K, V> {
                 validateConnection();
                 return;
             }
-            LOG.warning("Redis connection '" + connectionName + "' not found in registry, falling back to properties");
+            LOG.warning("Redis connection '" + connectionName + "' not found in registry");
         }
 
-        String clusterNodes = props != null ? props.getProperty("cluster-nodes", "127.0.0.1:6379") : "127.0.0.1:6379";
-        String password = props != null ? props.getProperty("password") : null;
-
-        String[] parts = clusterNodes.split(",");
-        RedisClientConfig fallbackConfig = new RedisClientConfig()
-                .clusterNodes(parseAllNodes(parts));
-        if (password != null && !password.isEmpty()) {
-            fallbackConfig.password(password);
-        }
-        this.jedis = fallbackConfig.createUnifiedJedis();
-        LOG.info("Redis store started using direct connection to " + clusterNodes);
+        RedisClientConfig defaultConfig = new RedisClientConfig()
+                .clusterNodes(parseAllNodes(new String[]{"127.0.0.1:6379"}));
+        this.jedis = defaultConfig.createUnifiedJedis();
+        LOG.info("Redis store started using default connection to 127.0.0.1:6379");
         validateConnection();
     }
 

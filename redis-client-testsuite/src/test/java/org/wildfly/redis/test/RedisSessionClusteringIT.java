@@ -207,7 +207,7 @@ public class RedisSessionClusteringIT {
         ProcessBuilder pb = new ProcessBuilder(
                 jbossHome + "/bin/standalone.sh",
                 "--stability=community",
-                "-Dredis.cluster.nodes=" + redisHost + ":" + redisPort
+                "-Djboss.redis-client.redis-connection.cluster-nodes=" + redisHost + ":" + redisPort
         );
         pb.directory(new File(jbossHome));
         pb.redirectErrorStream(true);

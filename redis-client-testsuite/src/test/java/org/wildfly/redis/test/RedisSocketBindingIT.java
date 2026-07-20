@@ -35,7 +35,7 @@ public class RedisSocketBindingIT {
         redis.start();
         System.setProperty("redis.socket.host", redis.getHost());
         System.setProperty("redis.socket.port", String.valueOf(redis.getMappedPort(6379)));
-        System.setProperty("redis.cluster.nodes",
+        System.setProperty("jboss.redis-client.redis-connection.cluster-nodes",
                 redis.getHost() + ":" + redis.getMappedPort(6379));
     }
 

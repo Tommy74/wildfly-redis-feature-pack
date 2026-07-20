@@ -33,7 +33,7 @@ public class RedisSubsystemIT {
     static void startRedis() {
         redis = new RedisContainer("redis:7-alpine");
         redis.start();
-        System.setProperty("redis.cluster.nodes",
+        System.setProperty("jboss.redis-client.redis-connection.cluster-nodes",
                 redis.getHost() + ":" + redis.getMappedPort(6379));
     }
 

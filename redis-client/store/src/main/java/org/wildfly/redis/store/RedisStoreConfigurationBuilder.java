@@ -17,15 +17,24 @@ import org.infinispan.configuration.cache.PersistenceConfigurationBuilder;
  * <invalidation-cache name="mycache" modules="org.wildfly.redis.store">
  *     <store class="org.wildfly.redis.store.RedisStoreConfigurationBuilder">
  *         <property name="connection">default</property>
+ *         <property name="cluster-nodes">${jboss.redis-client.redis-connection.cluster-nodes:127.0.0.1:6379}</property>
  *     </store>
  * </invalidation-cache>
  * }</pre>
  * <p>
- * Configuration is passed via Infinispan properties. Supported properties:
+ * Configuration is passed via Infinispan properties (checked in this order):
+ * <ol>
+ *   <li>{@code cluster-nodes} — comma-separated host:port pairs (takes precedence when present).
+ *       Use the same system property expression as the redis-client subsystem's
+ *       {@code cluster-nodes} attribute to keep both in sync.</li>
+ *   <li>{@code connection} — name of a redis-client subsystem connection (fallback when
+ *       cluster-nodes is not set)</li>
+ *   <li>If neither is set, connects to {@code 127.0.0.1:6379}</li>
+ * </ol>
+ * <p>
+ * Additional properties:
  * <ul>
- *   <li>{@code connection} — name of a redis-client subsystem connection (preferred)</li>
- *   <li>{@code cluster-nodes} — comma-separated host:port pairs (fallback, default: 127.0.0.1:6379)</li>
- *   <li>{@code password} — Redis password (optional)</li>
+ *   <li>{@code password} — Redis password (optional, used with cluster-nodes)</li>
  * </ul>
  */
 public class RedisStoreConfigurationBuilder extends CustomStoreConfigurationBuilder {
